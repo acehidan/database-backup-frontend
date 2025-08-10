@@ -283,7 +283,7 @@ const CreateBackupForm: React.FC = () => {
                       ? "border-red-300 bg-red-50"
                       : "border-gray-300 bg-gray-50 focus:bg-white"
                   }`}
-                  placeholder="mongodb+srv://username:password@cluster.mongodb.net/"
+                  placeholder="e.g., mongodb+srv://username:password@cluster.mongodb.net/"
                 />
                 {errors.databaseUrl && (
                   <p className="text-sm text-red-600 flex items-center space-x-1">
