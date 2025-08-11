@@ -76,27 +76,6 @@ const HomePage: React.FC = () => {
     );
     if (res.status === 200) {
       fetchConfigs();
-    }
-  };
-
-  const handleDeleteConfig = async (configId: string) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this backup configuration?"
-      )
-    ) {
-      return;
-    }
-
-    setActionLoading(configId);
-    try {
-      // Simulate API call for deletion
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setConfigs((prev) => prev.filter((config) => config.id !== configId));
-      console.log("Deleted config:", configId);
-    } catch (error) {
-      console.error("Error deleting config:", error);
-    } finally {
       setActionLoading(null);
     }
   };
