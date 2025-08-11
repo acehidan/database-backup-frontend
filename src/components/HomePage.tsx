@@ -2,14 +2,14 @@ import React, { useState, useEffect } from "react";
 import {
   Database,
   Plus,
-  Settings,
-  Trash2,
   Play,
   Loader2,
   AlertCircle,
   RefreshCw,
+  FileText,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 
 interface BackupConfig {
   id: string;
@@ -32,27 +32,13 @@ const HomePage: React.FC = () => {
   const fetchConfigs = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const response = await fetch(
-        `${import.meta.env.VITE_APP_API}api/v1/backup-config`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          // Add timeout and other fetch options
-          signal: AbortSignal.timeout(10000), // 10 second timeout
-        }
+      const response = await axios.get(
+        `${import.meta.env.VITE_APP_API}api/v1/backup-config/all`
       );
 
-      if (!response.ok) {
-        throw new Error(
-          `Server responded with status ${response.status}: ${response.statusText}`
-        );
+      if (response.status === 200) {
+        setConfigs(response.data.backupConfigs);
       }
-
-      const data = await response.json();
-      setConfigs(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching backup configs:", error);
       if (error instanceof Error) {
@@ -70,7 +56,6 @@ const HomePage: React.FC = () => {
       } else {
         setError("An unexpected error occurred. Please try again.");
       }
-      setConfigs([]);
     } finally {
       setLoading(false);
     }
@@ -81,16 +66,16 @@ const HomePage: React.FC = () => {
   }, []);
 
   const handleRunBackup = async (configId: string) => {
+    console.log(configId);
     setActionLoading(configId);
-    try {
-      // Simulate API call for running backup
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      // You would make actual API call here
-      console.log("Running backup for config:", configId);
-    } catch (error) {
-      console.error("Error running backup:", error);
-    } finally {
-      setActionLoading(null);
+    const res = await axios.post(
+      `${import.meta.env.VITE_APP_API}api/v1/manual-trigger`,
+      {
+        backupConfigId: configId,
+      }
+    );
+    if (res.status === 200) {
+      fetchConfigs();
     }
   };
 
@@ -142,26 +127,28 @@ const HomePage: React.FC = () => {
     );
   };
 
-  // if (loading) {
-  //   return (
-  //     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-  //       <div className="container mx-auto px-4 py-12">
-  //         <div className="flex items-center justify-center min-h-[400px]">
-  //           <div className="text-center">
-  //             <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-  //             <p className="text-gray-600 text-lg">Loading backup configurations...</p>
-  //           </div>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="container mx-auto px-4 py-12">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+              <p className="text-gray-600 text-lg">
+                Loading backup configurations...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-12">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 max-w-6xl mx-auto">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
             <Database className="w-8 h-8 text-white" />
           </div>
@@ -173,22 +160,31 @@ const HomePage: React.FC = () => {
           </p>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-center space-x-4">
-            <Link
-              to="/create"
-              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105 space-x-2"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Create New Backup</span>
-            </Link>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/create"
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105 space-x-2"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Create New Backup</span>
+              </Link>
 
-            <button
-              onClick={fetchConfigs}
-              className="inline-flex items-center px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-lg border border-gray-300 transition-all duration-200 transform hover:scale-105 space-x-2"
+              <button
+                onClick={fetchConfigs}
+                className="inline-flex items-center px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-lg border border-gray-300 transition-all duration-200 transform hover:scale-105 space-x-2"
+              >
+                <RefreshCw className="w-5 h-5" />
+                <span>Refresh</span>
+              </button>
+            </div>
+            <Link
+              to="/backup-log"
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105 space-x-2"
             >
-              <RefreshCw className="w-5 h-5" />
-              <span>Refresh</span>
-            </button>
+              <FileText className="w-5 h-5" />
+              <span>View Backup Logs</span>
+            </Link>
           </div>
         </div>
 
@@ -304,17 +300,15 @@ const HomePage: React.FC = () => {
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center space-x-2">
                             <button
-                              onClick={() =>
-                                handleRunBackup(config.id || index.toString())
-                              }
+                              onClick={() => handleRunBackup(config._id)}
                               disabled={
                                 actionLoading ===
-                                (config.id || index.toString())
+                                (config._id || index.toString())
                               }
                               className="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed space-x-1"
                             >
                               {actionLoading ===
-                              (config.id || index.toString()) ? (
+                              (config._id || index.toString()) ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
                                 <Play className="w-4 h-4" />
@@ -322,12 +316,12 @@ const HomePage: React.FC = () => {
                               <span>Run</span>
                             </button>
 
-                            <button className="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 space-x-1">
+                            {/* <button className="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 space-x-1">
                               <Settings className="w-4 h-4" />
                               <span>Edit</span>
-                            </button>
+                            </button> */}
 
-                            <button
+                            {/* <button
                               onClick={() =>
                                 handleDeleteConfig(
                                   config.id || index.toString()
@@ -346,7 +340,7 @@ const HomePage: React.FC = () => {
                                 <Trash2 className="w-4 h-4" />
                               )}
                               <span>Delete</span>
-                            </button>
+                            </button> */}
                           </div>
                         </td>
                       </tr>
