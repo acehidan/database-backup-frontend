@@ -170,7 +170,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Demo Credentials Info */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        {/* <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="text-sm font-semibold text-blue-900 mb-2">
             Valid Login Credentials
           </h3>
@@ -185,7 +185,7 @@ const LoginPage: React.FC = () => {
               <strong>Demo:</strong> demo@backup.com / demo123
             </p>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
