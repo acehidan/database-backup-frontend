@@ -6,6 +6,7 @@ import LoginPage from "./components/LoginPage";
 import HomePage from "./components/HomePage";
 import CreateBackupForm from "./components/CreateBackupForm";
 import BackupLogsPage from "./components/BackupLog";
+import BackupDetailPage from "./components/BackupDetailPage";
 
 function App() {
   return (
@@ -34,6 +35,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <BackupLogsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/backup/:id"
+            element={
+              <ProtectedRoute>
+                <BackupDetailPage />
               </ProtectedRoute>
             }
           />

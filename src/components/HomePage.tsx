@@ -7,6 +7,7 @@ import {
   AlertCircle,
   RefreshCw,
   FileText,
+  Settings,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import axios from "axios";
@@ -61,6 +62,8 @@ const HomePage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  console.log(configs);
 
   useEffect(() => {
     fetchConfigs();
@@ -297,6 +300,16 @@ const HomePage: React.FC = () => {
                                   <Play className="w-4 h-4" />
                                 )}
                                 <span>Run</span>
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  (window.location.href = `/backup/${config._id}`)
+                                }
+                                className="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 space-x-1"
+                              >
+                                <Settings className="w-4 h-4" />
+                                <span>Details</span>
                               </button>
 
                               {/* <button className="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105 space-x-1">
