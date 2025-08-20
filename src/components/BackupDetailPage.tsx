@@ -12,8 +12,10 @@ import {
   Calendar,
   Globe,
   Server,
-  Download,
   Eye,
+  Download,
+  RotateCcw,
+  X,
 } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import Header from "./Header";
@@ -56,6 +58,13 @@ const BackupDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [allLogs, setAllLogs] = useState<BackupLog[]>([]);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [selectedLogForRestore, setSelectedLogForRestore] =
+    useState<BackupLog | null>(null);
+  const [showRestoreSuccess, setShowRestoreSuccess] = useState(false);
+  const [restoreSuccessMessage, setRestoreSuccessMessage] = useState("");
 
   const fetchConfig = async () => {
     if (!id) return;
@@ -96,6 +105,7 @@ const BackupDetailPage: React.FC = () => {
       console.log("log", log);
       //   console.log(log);
       setLogs(log);
+      setAllLogs(log);
       setLogsLoading(false);
     } else {
       setError("Backup configuration not found");
@@ -155,6 +165,96 @@ const BackupDetailPage: React.FC = () => {
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
+
+  const handleRestoreBackup = async (logId: string) => {
+    if (!selectedLogForRestore) return;
+
+    setRestoreLoading(true);
+    const res = await axios.post(
+      `${import.meta.env.VITE_APP_API}api/v1/restore`,
+      {
+        backupFileId: logId,
+      }
+    );
+    console.log(res);
+    if (res.status === 200) {
+      setShowRestoreModal(false);
+      setSelectedLogForRestore(null);
+      fetchLogs();
+      setShowRestoreSuccess(true);
+      setRestoreSuccessMessage("Backup restored successfully");
+    } else {
+      setError("Failed to restore backup");
+    }
+
+    // try {
+    //   const response = await fetch(
+    //     `https://databasebackupsystem.dns.army/api/v1/restore`,
+    //     {
+    //       method: "POST",
+    //       headers: {
+    //         "Content-Type": "application/json",
+    //       },
+    //       signal: AbortSignal.timeout(60000), // 60 second timeout for restore operations
+    //     }
+    //   );
+
+    //   if (response.ok) {
+    //     const data = await response.json();
+    //     alert(
+    //       `Restore started successfully! ${
+    //         data.message || "You can monitor the progress in the backup logs."
+    //       }`
+    //     );
+    //     setShowRestoreModal(false);
+    //     setSelectedLogForRestore(null);
+    //     // Refresh logs to show any updates
+    //     fetchLogs();
+    //   } else {
+    //     const errorText = await response.text();
+    //     throw new Error(
+    //       `Server responded with status ${response.status}: ${
+    //         errorText || response.statusText
+    //       }`
+    //     );
+    //   }
+    // } catch (error) {
+    //   console.error("Error restoring backup:", error);
+    //   let errorMessage =
+    //     "An unexpected error occurred while starting the restore.";
+
+    //   if (error instanceof Error) {
+    //     if (error.name === "TimeoutError") {
+    //       errorMessage =
+    //         "The restore request timed out. The restore may still be running in the background.";
+    //     } else if (error.message.includes("Failed to fetch")) {
+    //       errorMessage =
+    //         "Unable to connect to the backup service. Please check if the service is running.";
+    //     } else {
+    //       errorMessage = `Failed to start restore: ${error.message}`;
+    //     }
+    //   }
+
+    //   alert(errorMessage);
+    // } finally {
+    //   setRestoreLoading(false);
+    // }
+  };
+
+  const getAvailableBackupsForRestore = () => {
+    console.log(allLogs);
+    return allLogs
+      .filter(
+        (log: BackupLog) =>
+          log.backupConfigId === id && log.status === "success"
+      )
+      .sort(
+        (a: BackupLog, b: BackupLog) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+  };
+
+  // console.log("available backups", getAvailableBackupsForRestore());
 
   useEffect(() => {
     name && fetchLogs();
@@ -353,17 +453,12 @@ const BackupDetailPage: React.FC = () => {
                     <span>Run Backup</span>
                   </button>
 
-                  <button className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-105 space-x-2">
-                    <Edit className="w-4 h-4" />
-                    <span>Edit</span>
-                  </button>
-
                   <button
-                    onClick={() => setShowDeleteModal(true)}
-                    className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-105 space-x-2"
+                    onClick={() => setShowRestoreModal(true)}
+                    className="inline-flex items-center px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-105 space-x-2"
                   >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Delete</span>
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Restore</span>
                   </button>
                 </div>
               </div>
@@ -643,6 +738,276 @@ const BackupDetailPage: React.FC = () => {
                       <Trash2 className="w-4 h-4" />
                     )}
                     <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showRestoreModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="bg-gradient-to-r from-orange-600 to-red-600 px-8 py-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <RotateCcw className="w-6 h-6 text-white" />
+                    <h2 className="text-xl font-semibold text-white">
+                      Restore Database
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowRestoreModal(false);
+                      setSelectedLogForRestore(null);
+                    }}
+                    className="text-white hover:text-gray-200 transition-colors duration-200"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-8">
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Select a Backup to Restore
+                  </h3>
+                  <p className="text-gray-600">
+                    Choose from the available successful backups for "
+                    {config.name}". Only successful backups can be restored.
+                  </p>
+                </div>
+
+                {/* Warning */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-semibold text-yellow-800">
+                        Warning
+                      </h4>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        Restoring a backup will overwrite the current database.
+                        This action cannot be undone. Please ensure you have a
+                        recent backup before proceeding.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Backup Selection */}
+                <div className="space-y-4 mb-6">
+                  {getAvailableBackupsForRestore().length === 0 ? (
+                    <div className="text-center py-8">
+                      <Database className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">
+                        No successful backups available for restore
+                      </p>
+                      <p className="text-sm text-gray-500 mt-2">
+                        Run a backup first to create restore points
+                      </p>
+                    </div>
+                  ) : (
+                    getAvailableBackupsForRestore().map((log) => (
+                      <div
+                        key={log._id}
+                        onClick={() => setSelectedLogForRestore(log)}
+                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                          selectedLogForRestore?._id === log._id
+                            ? "border-orange-500 bg-orange-50"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-2">
+                              {getStatusIcon(log.status)}
+                              <span
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                                  log.status
+                                )}`}
+                              >
+                                {log.status.charAt(0).toUpperCase() +
+                                  log.status.slice(1)}
+                              </span>
+                            </div>
+                            <div>
+                              {/* <p className="font-semibold text-gray-900">
+                                {log.fileName}
+                              </p> */}
+                              <p className="font-semibold text-gray-900">
+                                {new Date(log.createdAt).toLocaleDateString()}{" "}
+                                at{" "}
+                                {new Date(log.createdAt).toLocaleTimeString()}
+                              </p>
+                              {/* {log.errorMessage && (
+                                <p className="text-xs text-red-600 mt-1">
+                                  Error: {log.errorMessage}
+                                </p>
+                              )} */}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <span className="text-sm text-gray-600">
+                              {log.size > 0
+                                ? `${(log.size / 1024).toFixed(2)} KB`
+                                : "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Selected Backup Details */}
+                {selectedLogForRestore && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                    <h4 className="text-sm font-semibold text-orange-800 mb-2">
+                      Selected Backup Details
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-orange-700 font-medium">
+                          File:
+                        </span>
+                        <span className="text-orange-800 ml-2 font-mono">
+                          {selectedLogForRestore.fileName}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-orange-700 font-medium">
+                          Size:
+                        </span>
+                        <span className="text-orange-800 ml-2">
+                          {selectedLogForRestore.size > 0
+                            ? `${(selectedLogForRestore.size / 1024).toFixed(
+                                2
+                              )} KB`
+                            : "N/A"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-orange-700 font-medium">
+                          Created:
+                        </span>
+                        <span className="text-orange-800 ml-2">
+                          {new Date(
+                            selectedLogForRestore.createdAt
+                          ).toLocaleDateString()}{" "}
+                          {new Date(
+                            selectedLogForRestore.createdAt
+                          ).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-orange-700 font-medium">
+                          Status:
+                        </span>
+                        <span className="text-orange-800 ml-2 font-medium">
+                          {selectedLogForRestore.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowRestoreModal(false);
+                      setSelectedLogForRestore(null);
+                    }}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-all duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() =>
+                      selectedLogForRestore &&
+                      handleRestoreBackup(selectedLogForRestore._id)
+                    }
+                    disabled={!selectedLogForRestore || restoreLoading}
+                    className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  >
+                    {restoreLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Restoring...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="w-4 h-4" />
+                        <span>Start Restore</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Restore Success Modal */}
+        {showRestoreSuccess && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+              <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-8 py-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <CheckCircle className="w-8 h-8 text-white" />
+                    <h2 className="text-xl font-semibold text-white">
+                      Restore Successful
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => setShowRestoreSuccess(false)}
+                    className="text-white hover:text-gray-200 transition-colors duration-200"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-8">
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {config.name}
+                  </h3>
+                  <p className="text-gray-600">{restoreSuccessMessage}</p>
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                  <div className="flex items-start space-x-3">
+                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-semibold text-green-800">
+                        Restore Complete
+                      </h4>
+                      <p className="text-sm text-green-700 mt-1">
+                        Your database has been successfully restored from the
+                        selected backup. You can now verify the restored data in
+                        your application.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex space-x-3">
+                  <Link
+                    to="/backup-log"
+                    onClick={() => setShowRestoreSuccess(false)}
+                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 text-center"
+                  >
+                    View Logs
+                  </Link>
+                  <button
+                    onClick={() => setShowRestoreSuccess(false)}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-all duration-200"
+                  >
+                    Close
                   </button>
                 </div>
               </div>
